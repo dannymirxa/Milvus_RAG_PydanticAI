@@ -1,0 +1,4 @@
+.env
+Transformation Model/
+*.json
+__pycache__
