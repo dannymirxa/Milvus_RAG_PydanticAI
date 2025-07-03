@@ -3,7 +3,7 @@ from embed_text import emb_text
 from milvus_client import build_milvus_client
 from tqdm import tqdm
 
-uri= "./milvus_demo.db"
+uri= "./milvus_tgps.db"
 collection_name="TGPS_transformation_model"
 
 def build_vector_db() -> None:
@@ -21,6 +21,6 @@ def build_vector_db() -> None:
 
     milvus_client.insert(collection_name=collection_name, data=data)
 
-# build_vector_db()
+build_vector_db()
 
 

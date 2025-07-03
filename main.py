@@ -3,7 +3,7 @@ from pymilvus import MilvusClient
 
 from embed_text import emb_text
 
-uri= "./milvus_demo.db"
+uri= "./milvus_tgps.db"
 collection_name="TGPS_transformation_model"
 
 milvus_client = MilvusClient(uri=uri)
