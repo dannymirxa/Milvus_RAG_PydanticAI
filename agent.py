@@ -54,11 +54,11 @@ async def retriever(ctx: RunContext[Deps], query: str) -> str:
         ],  
         limit=2,  # Return top 3 results
         search_params={"metric_type": "IP", "params": {}},  # Inner product distance
-        output_fields=["source", "text"],  # Return the text field
+        output_fields=["source_id", "text"],  # Return the text field
     )
 
     retrieved_lines_with_distances = [
-        (res["entity"]["source"], res["entity"]["text"], res["distance"]) for res in search_res[0]
+        (res["entity"]["source_id"], res["entity"]["text"], res["distance"]) for res in search_res[0]
     ]
 
     ctx = "\n".join(
