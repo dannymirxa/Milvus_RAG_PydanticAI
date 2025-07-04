@@ -1,4 +1,6 @@
+.gitignore
 .env
 Transformation Model/
 *.json
 __pycache__
+*.db

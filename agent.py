@@ -95,7 +95,7 @@ async def main(request: str):
 import asyncio
 
 if __name__ == "__main__":
-    response, total_tokens = asyncio.run(main("How many types of driver are there?"))
+    response, total_tokens = asyncio.run(main("what needs to be doen to manage rumors?"))
 
     print(response)
     print(total_tokens)
