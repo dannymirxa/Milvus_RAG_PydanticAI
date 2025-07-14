@@ -1,4 +1,4 @@
-from insert_chat import insert_chat_into_vector_db
+from historical_chat import insert_chat_into_vector_db
 
 import os
 from dotenv import load_dotenv
@@ -78,19 +78,47 @@ async def tgps_retriever(ctx: RunContext[Deps], query: str) -> str:
     )
     return ctx
 
+@agent.tool
+async def chat_retriever(ctx: RunContext[Deps], query: str, timestamp: datetime= datetime.now()) -> str:
+    # embedding = await ctx.deps.openai.embeddings.create(input=query, model='text-embedding-3-large')
+    # embedding = embedding.data[0].embedding
+
+    search_res = ctx.deps.client.search(
+        collection_name="TGPS_transformation_chat",
+        data=[
+            model.encode(query)
+        ],  
+        limit=2,  # Return top 3 results
+        search_params={"metric_type": "IP", "params": {}},  # Inner product distance
+        filter=f'created_at < {int(timestamp.timestamp())}',
+        output_fields=["text", "created_at"],  # Return the text field
+    )
+
+    retrieved_lines_with_distances = [
+        (res["entity"]["text"], str(datetime.fromtimestamp(res["entity"]["created_at"])), res["distance"]) for res in search_res[0]
+    ]
+
+    context = "\n".join(
+        ["time: " + line_with_distance[1] + "\n" + line_with_distance[0] for line_with_distance in retrieved_lines_with_distances]
+    )
+    return context
+
 @agent.system_prompt
 def system_prompt(ctx: RunContext[Deps]) -> str:
     return f"""
     You are an AI assistant. Your main goal is to answer the user's questions accurately and comprehensively.
-    To achieve this, you must use the `retriever` tool to find relevant information.
+    You have access to two tools: `tgps_retriever` and `chat_retriever`.
 
     Here's how you should operate:
-    1. When the user asks a question, identify the key terms or concepts in their query.
-    2. Use these key terms as the `query` for the `retriever` tool to fetch relevant context.
-    3. Once you receive the context from the `retriever` tool, carefully read and understand it.
+    1. When the user asks a question, analyze the query to determine its intent:
+        - If the query is about "tgps" or related topics, use the `tgps_retriever` tool.
+        - If the query is about previous chats or conversations, use the `chat_retriever` tool.
+        - If the query is ambiguous or doesn't clearly fall into either category, default to using `tgps_retriever`.
+    2. Use the key terms from the user's query as the `query` argument for the chosen retriever tool.
+    3. Once you receive the context from the retriever tool, carefully read and understand it.
     4. Formulate your answer to the user's question *solely based on the information provided in the retrieved context*.
     5. If the retrieved context does not contain enough information to answer the question, state that you cannot answer based on the available information.
-    6. Do not make up information or use external knowledge. Always rely on the `retriever` tool's output.
+    6. Do not make up information or use external knowledge. Always rely on the retriever tool's output.
     """
 
 async def main(request: str):
@@ -108,7 +136,7 @@ async def main(request: str):
 import asyncio
 
 if __name__ == "__main__":
-    request = "How to communicate with your own superiors?"
+    request = "What did we talked about previously?"
     response, total_tokens = asyncio.run(main(request))
 
     insert_chat_into_vector_db(request=request, output=response.output)
