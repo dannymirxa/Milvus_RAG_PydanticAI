@@ -24,7 +24,7 @@ def TGPS_retriever(question: str, timestamp: datetime= datetime.now()) -> str:
         data=[
             model.encode(question)
         ],  # Use the `emb_text` function to convert the question to an embedding vector
-        limit=2,  # Return top 2 results
+        limit=5,  # Return top 2 results
         search_params={"metric_type": "IP", "params": {}},  # Inner product distance
         filter=f'created_at < {int(timestamp.timestamp())}',
         output_fields=["source_id", "text", "created_at"],  # Return the source and text fields
@@ -42,5 +42,5 @@ def TGPS_retriever(question: str, timestamp: datetime= datetime.now()) -> str:
     return context
 
 # Example usage of the TGPS_retriever function
-question = "What is fear?"
+question = "What are the importance of business models?"
 print(TGPS_retriever(question=question, timestamp=datetime.now()))

@@ -7,15 +7,17 @@ def check_collection():
     # client = MilvusClient("./milvus_demo.db")
 
     # Load the collection
-    collection = Collection("TGPS_transformation_chat")
+    # collection = Collection("TGPS_transformation_chat")
+    collection = Collection("TGPS_transformation_model_document")
 
     # Load data into memory
     collection.load()
 
     # Retrieve all data (you can limit or filter as needed)
     results = collection.query(
-        expr="id != 0",  # No filter, fetch all
-        output_fields=["id", "text", "created_at"]
+        expr="id == 103",  # No filter, fetch all
+        filter="id == 103",
+        output_fields=["id", "source_id", "page", "text", "created_at"]
     )
 
     # Print results

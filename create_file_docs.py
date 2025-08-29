@@ -1,7 +1,23 @@
 import glob, os
-from chonkie import RecursiveChunker
+import pymupdf4llm
+import pathlib
+from chonkie import RecursiveChunker, LateChunker, RecursiveRules, SemanticChunker
 
-chunker = RecursiveChunker.from_recipe("markdown")
+# chunker = RecursiveChunker.from_recipe("markdown")
+
+# chunker = LateChunker(
+#     embedding_model="BAAI/bge-m3",
+#     chunk_size=10,
+#     rules=RecursiveRules(),
+#     min_characters_per_chunk=24,
+# )
+
+chunker = SemanticChunker(
+    embedding_model="BAAI/bge-m3",  # Default model
+    threshold=0.5,                               # Similarity threshold (0-1) or (1-100) or "auto"
+    chunk_size=1024,                              # Maximum tokens per chunk
+    min_sentences=1                              # Initial sentences per chunk
+)
 
 def _list_files(dir: str) -> list[str]:
 
@@ -21,7 +37,14 @@ def create_file_data(dir: str) -> dict[str, str]:
 
     return file_contents
 
-def create_docs_chunks(dir: str) -> dict[str, str]:
+def _convert_pdf_to_md(dir: str) -> str:
+    md_text = ""
+    for file in glob.glob(f"{dir}/*.pdf", recursive=True):
+        md_text = pymupdf4llm.to_markdown(file)
+        # pathlib.Path(f"{dir}.md").write_bytes(md_text.encode())
+    return md_text
+
+def create_docs_chunks_md(dir: str) -> dict[str, str]:
 
     docs_chunks = []
 
@@ -41,6 +64,24 @@ def create_docs_chunks(dir: str) -> dict[str, str]:
             )
     return docs_chunks
 
+def create_docs_chunks_pdf(dir: str) -> dict[str, str]:
+
+    docs_chunks = []
+
+    content = _convert_pdf_to_md(dir)
+
+    chunks = chunker(content)
+    
+    for index, chunk in enumerate(chunks):
+        docs_chunks.append(
+            {   
+                "source_id": str(index),
+                # "source": file.replace(dir + os.sep, ''),
+                "text": chunk.text,
+            }
+        )
+    return docs_chunks
+
 # import json
 # with open('file_data.json', 'w') as fp:
 #     json.dump(create_docs_chunks("Transformation Model"), fp)
@@ -51,3 +92,5 @@ def create_docs_chunks(dir: str) -> dict[str, str]:
 # result = create_docs_chunks("Transformation Model")
 # print(result)
 
+
+# print(create_docs_chunks_pdf("Files"))

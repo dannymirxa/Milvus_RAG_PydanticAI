@@ -1,5 +1,5 @@
 from pymilvus import MilvusClient, DataType
-from create_file_docs import create_file_data, create_docs_chunks
+from create_file_docs import create_file_data, create_docs_chunks_md
 # from embed_text import emb_text
 from milvus_client import build_chat_client
 from tqdm import tqdm
