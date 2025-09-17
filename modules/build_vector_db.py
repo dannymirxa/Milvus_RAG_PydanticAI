@@ -1,4 +1,4 @@
-from modules.create_file_docs import create_file_data, create_docs_chunks_md, create_docs_chunks_pdf
+from modules.create_file_docs import create_file_data, create_docs_chunks_md
 from modules.embeddings_model import embed_text
 from tqdm import tqdm
 
@@ -21,7 +21,8 @@ def create_vectored_texts(file_path: str) -> None:
             {
                 "id": index, 
                 "source_id": doc["source_id"], 
-                "text": doc["text"],
+                "text": doc["text"],                
+                "references": doc["references"],
                 "vector": vector,
                 # "created_at": int(start_datetime.timestamp())
                 "created_at": int(now.timestamp())

@@ -16,6 +16,7 @@ def build_db_collection(uri: str, collection_name: str) -> MilvusClient:
     schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=3072)
     schema.add_field(field_name="source_id", datatype=DataType.VARCHAR, max_length=256)
     schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=3072) # text-embedding-3-large dimension length
+    schema.add_field(field_name="references", datatype=DataType.VARCHAR, max_length=3072)
     schema.add_field(field_name="created_at", datatype=DataType.INT64)
 
     # Create the collection with the defined schema

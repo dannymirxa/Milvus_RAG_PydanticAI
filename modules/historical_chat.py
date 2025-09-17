@@ -1,24 +1,19 @@
 from pymilvus import MilvusClient, DataType
-from create_file_docs import create_file_data, create_docs_chunks_md
-# from embed_text import emb_text
-from milvus_client import build_chat_client
+from modules.create_file_docs import create_file_data, create_docs_chunks_md
+from modules.embeddings_model import embed_text
 from tqdm import tqdm
 
 uri= "./milvus_tgps.db"
-collection_name="TGPS_transformation_chat"
+collection_name="chat"
 
 from datetime import datetime
-
-from sentence_transformers import SentenceTransformer
-model = SentenceTransformer("BAAI/bge-m3")
-# embeddings = model.encode(sentences)
 
 def build_chat_client(uri: str, collection_name: str) -> MilvusClient:
     # Initialize the Milvus client with the given URI
     milvus_client = MilvusClient(uri= uri)
 
-    # if milvus_client.has_collection(collection_name):
-    #     milvus_client.drop_collection(collection_name)
+    if milvus_client.has_collection(collection_name):
+        milvus_client.drop_collection(collection_name)
 
     # Define the schema for the collection, specifying the fields and their data types
     schema = MilvusClient.create_schema(
@@ -27,8 +22,8 @@ def build_chat_client(uri: str, collection_name: str) -> MilvusClient:
     )
 
     schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
-    schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=1024)
-    schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=1024)
+    schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=3072)
+    schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=3072)
     schema.add_field(field_name="created_at", datatype=DataType.INT64)
 
     # Create the collection with the defined schema
@@ -71,34 +66,10 @@ def insert_chat_into_vector_db(request: str, output: str) -> None:
 
     data = [{
                 "text": chat, 
-                "vector": model.encode(chat),
+                "vector": embed_text(chat),
                 "created_at": int(datetime.now().timestamp())
             }]
 
     milvus_client.insert(collection_name=collection_name, data=data)
 
 # build_chat_client(uri=uri, collection_name=collection_name)
-
-# client=MilvusClient(uri="./milvus_tgps.db")
-# query = "what needs to be done to manage rumors?"
-# timestamp = datetime(2025, 7, 12, 15, 30)
-# search_res = client.search(
-#                 collection_name=collection_name,
-#                 data=[
-#                     model.encode(query)
-#                 ],  
-#                 limit=2,  # Return top 3 results
-#                 search_params={"metric_type": "IP", "params": {}},  # Inner product distance
-#                 filter=f'created_at < {int(timestamp.timestamp())}',
-#                 output_fields=["created_at", "text"],  # Return the text field
-#             )
-
-# retrieved_lines_with_distances = [
-#     (datetime.fromtimestamp(res["entity"]["created_at"]), res["entity"]["text"], res["distance"]) for res in search_res[0]
-# ]
-
-# ctx = "\n".join(
-#         [str(line_with_distance[0]) + ": " + line_with_distance[1] for line_with_distance in retrieved_lines_with_distances]
-#     )
-
-# print(ctx)

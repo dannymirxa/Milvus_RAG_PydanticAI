@@ -1,12 +1,11 @@
-from historical_chat import insert_chat_into_vector_db
+from modules.historical_chat import insert_chat_into_vector_db
+from modules.embeddings_model import embed_text
 
 import os
 from dotenv import load_dotenv
 from dataclasses import dataclass
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.providers.google_gla import GoogleGLAProvider
 
 from openai import AsyncAzureOpenAI
 from pymilvus import MilvusClient
@@ -18,10 +17,8 @@ from pydantic_ai import Agent, ModelRetry, RunContext
 from pymilvus import MilvusClient
 
 from datetime import datetime
-from sentence_transformers import SentenceTransformer
-model = SentenceTransformer("BAAI/bge-m3")
 
-load_dotenv()
+load_dotenv('.env')
 
 async_client = AsyncAzureOpenAI(
     azure_endpoint = "https://llmcoechangemateopenai2.openai.azure.com/",
@@ -30,29 +27,28 @@ async_client = AsyncAzureOpenAI(
     azure_deployment='gpt-4o-dev'
 )
 
-OPENAI_MODEL = OpenAIModel(
+OPENAI_MODEL = OpenAIChatModel(
     'gpt-4o',
     provider=OpenAIProvider(openai_client=async_client),
 )
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = GeminiModel('gemini-2.0-flash', provider=GoogleGLAProvider(api_key=GEMINI_API_KEY))
-
 
 @dataclass
 class Deps:
-    openai: GeminiModel
+    openai: AsyncAzureOpenAI
     client: MilvusClient
 
 class contextSuccess(BaseModel):
     context: Annotated[str, MinLen(1)] = Field(..., description='Context from vectore store')
 
 agent = Agent(
-    model=GEMINI_MODEL,
+    model=OPENAI_MODEL,
     output_type=contextSuccess,
     output_retries=3,
     model_settings={'temperature': 0.1}
 )
+
+collection_name="TGPS_transformation_model_action_recommendation_docs"
 
 @agent.tool
 async def tgps_retriever(ctx: RunContext[Deps], query: str) -> str:
@@ -60,9 +56,9 @@ async def tgps_retriever(ctx: RunContext[Deps], query: str) -> str:
     # embedding = embedding.data[0].embedding
 
     search_res = ctx.deps.client.search(
-        collection_name="TGPS_transformation_model_timestamped",
+        collection_name=collection_name,
         data=[
-            model.encode(query)
+            embed_text(query)
         ],  
         limit=2,  # Return top 3 results
         search_params={"metric_type": "IP", "params": {}},  # Inner product distance
@@ -84,9 +80,9 @@ async def chat_retriever(ctx: RunContext[Deps], query: str, timestamp: datetime=
     # embedding = embedding.data[0].embedding
 
     search_res = ctx.deps.client.search(
-        collection_name="TGPS_transformation_chat",
+        collection_name="chat",
         data=[
-            model.encode(query)
+            embed_text(query)
         ],  
         limit=2,  # Return top 3 results
         search_params={"metric_type": "IP", "params": {}},  # Inner product distance
@@ -122,13 +118,12 @@ def system_prompt(ctx: RunContext[Deps]) -> str:
     """
 
 async def main(request: str):
-    # openai_client = AsyncAzureOpenAI(        
-    #     api_version="2024-12-01-preview",
-    #     azure_endpoint=os.getenv("AZURE_OPEN_AI_ENDPOINT"),
-    #     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    # )
-    GEMINI_MODEL = GeminiModel('gemini-2.0-flash', provider=GoogleGLAProvider(api_key=GEMINI_API_KEY))
-    deps = Deps(openai=GEMINI_MODEL, client=MilvusClient(uri="./milvus_tgps.db"))
+    openai_client = AsyncAzureOpenAI(        
+        api_version="2024-12-01-preview",
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    )
+    deps = Deps(openai=openai_client, client=MilvusClient(uri="./milvus_tgps.db"))
     response = await agent.run(user_prompt=request, deps=deps)
 
     return response, response.usage()
@@ -136,7 +131,7 @@ async def main(request: str):
 import asyncio
 
 if __name__ == "__main__":
-    request = "What did we talked about previously?"
+    request = "How to set direction & narrative for the first week?"
     response, total_tokens = asyncio.run(main(request))
 
     insert_chat_into_vector_db(request=request, output=response.output)
