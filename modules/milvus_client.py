@@ -1,13 +1,7 @@
 from pymilvus import MilvusClient, FieldSchema, CollectionSchema, DataType
 
-# This script sets up a Milvus client and creates a collection with specified fields.
-# The collection is named "TGPS_transformation_model" and includes fields for storing
-# text data and its corresponding vector embeddings.
-
-
-def build_chat_client(uri: str, collection_name: str) -> MilvusClient:
-    # Initialize the Milvus client with the given URI
-    milvus_client = MilvusClient(uri= uri)
+def build_db_collection(uri: str, collection_name: str) -> MilvusClient:
+    milvus_client = MilvusClient(uri=uri)
 
     if milvus_client.has_collection(collection_name):
         milvus_client.drop_collection(collection_name)
@@ -19,9 +13,9 @@ def build_chat_client(uri: str, collection_name: str) -> MilvusClient:
     )
 
     schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
-    schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=1024)
+    schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=3072)
     schema.add_field(field_name="source_id", datatype=DataType.VARCHAR, max_length=256)
-    schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=1024)
+    schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=3072) # text-embedding-3-large dimension length
     schema.add_field(field_name="created_at", datatype=DataType.INT64)
 
     # Create the collection with the defined schema
@@ -41,7 +35,7 @@ def build_chat_client(uri: str, collection_name: str) -> MilvusClient:
         metric_type="IP",
         index_type="FLAT",
         index_name="vector_index",
-        params={ "nlist": 1024 }
+        params={ "nlist": 3072 }
     )
 
     # Create the index in the collection

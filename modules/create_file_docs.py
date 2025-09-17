@@ -3,32 +3,42 @@ import pymupdf4llm
 import pathlib
 from chonkie import RecursiveChunker, LateChunker, RecursiveRules, SemanticChunker
 
+from dotenv import load_dotenv
+load_dotenv('.env')
+
 # chunker = RecursiveChunker.from_recipe("markdown")
 
-# chunker = LateChunker(
-#     embedding_model="BAAI/bge-m3",
-#     chunk_size=10,
-#     rules=RecursiveRules(),
-#     min_characters_per_chunk=24,
-# )
+from chonkie.embeddings.azure_openai import AzureOpenAIEmbeddings
+
+# Initialize Azure OpenAI embeddings
+embeddings = AzureOpenAIEmbeddings(
+	azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+	azure_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+	model="text-embedding-3-large",
+	deployment="text-embedding-3-large"
+)
+
+# Single embedding
+# emb = embeddings.embed("your text here")
+
+# Batch embedding
+# embs = embeddings.embed_batch(["text1", "text2"])
 
 chunker = SemanticChunker(
-    embedding_model="BAAI/bge-m3",  # Default model
+    # embedding_model="BAAI/bge-m3",                 # Default model
+    embedding_model=embeddings,
     threshold=0.5,                               # Similarity threshold (0-1) or (1-100) or "auto"
-    chunk_size=1024,                              # Maximum tokens per chunk
+    chunk_size=3072,                              # Maximum tokens per chunk
     min_sentences=1                              # Initial sentences per chunk
 )
 
 def _list_files(dir: str) -> list[str]:
-
     file_names = [os.path.join(dir, f) for f in os.listdir(dir)]
 
     return file_names
 
-
 def create_file_data(dir: str) -> dict[str, str]:
     file_names = _list_files(dir)
-
     file_contents= []
 
     for file_name in file_names:
@@ -45,7 +55,6 @@ def _convert_pdf_to_md(dir: str) -> str:
     return md_text
 
 def create_docs_chunks_md(dir: str) -> dict[str, str]:
-
     docs_chunks = []
 
     for file in glob.glob(f"{dir}/*.md", recursive=True):
@@ -65,11 +74,8 @@ def create_docs_chunks_md(dir: str) -> dict[str, str]:
     return docs_chunks
 
 def create_docs_chunks_pdf(dir: str) -> dict[str, str]:
-
     docs_chunks = []
-
     content = _convert_pdf_to_md(dir)
-
     chunks = chunker(content)
     
     for index, chunk in enumerate(chunks):

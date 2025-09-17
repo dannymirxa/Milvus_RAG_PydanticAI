@@ -1,19 +1,20 @@
-from modules.milvus_client import build_db_collection
-from modules.build_vector_db import create_vectored_texts
-from modules.embeddings_model import embed_text
-
 from pymilvus import MilvusClient
+# from embed_text import emb_text
+
+# This script demonstrates how to use the Milvus client to perform a search
+# on the "TGPS_transformation_model" collection. It retrieves text data based
+# on a given question by converting the question into an embedding vector.
+
 from datetime import datetime
 now = datetime.now()
 
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer("BAAI/bge-m3")
+
 uri= "./milvus_tgps.db"
-collection_name="TGPS_transformation_model_action_recommendation"
+collection_name="TGPS_transformation_model_timestamped"
 
-# milvus_client = build_db_collection(uri=uri, collection_name=collection_name)
-# data = create_vectored_texts("Transformation Model")
-
-# milvus_client.insert(collection_name=collection_name, data=data)
-
+# Initialize the Milvus client with the specified URI
 milvus_client = MilvusClient(uri=uri)
 
 def TGPS_retriever(question: str, timestamp: datetime= datetime.now()) -> str:
@@ -21,7 +22,7 @@ def TGPS_retriever(question: str, timestamp: datetime= datetime.now()) -> str:
     search_res = milvus_client.search(
         collection_name=collection_name,
         data=[
-            embed_text(question)
+            model.encode(question)
         ],  # Use the `emb_text` function to convert the question to an embedding vector
         limit=5,  # Return top 2 results
         search_params={"metric_type": "IP", "params": {}},  # Inner product distance

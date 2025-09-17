@@ -4,3 +4,6 @@ Transformation Model/
 *.json
 __pycache__
 *.db
+*.zip
+Files
+*.md
