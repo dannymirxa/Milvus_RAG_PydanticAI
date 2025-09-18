@@ -9,22 +9,21 @@ from pymilvus import MilvusClient
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypeAlias, Union, Optional
 from annotated_types import MinLen
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent, RunContext
 
 from dotenv import load_dotenv
 load_dotenv('.env')
 
 from model import OPENAI_MODEL
-from modules.embeddings_model import embed_text
 from tools.retriever import retriever
 
 @dataclass
 class Deps:
     client: MilvusClient
-    collection_name: str
 
 class actionSuccess(BaseModel):
-    context: Annotated[str, MinLen(1)] = Field(..., description='Context from vectore store')
+    recommendationAnswer: Annotated[str, MinLen(1)] = Field(..., description='Answer from recommendation vector store')
+    docsAnswer: Annotated[str, MinLen(1)] = Field(..., description='Answer from documents vector store')
 
 class invalidRequest(BaseModel):
     error_message: str
@@ -42,27 +41,36 @@ agent = Agent(
 def tgps_retriever(ctx: RunContext[Deps], query: str) -> str:
     return retriever(
         milvus_client=ctx.deps.client, 
-        collection_name=ctx.deps.collection_name, 
+        collection_name="TGPS_transformation_model_action_recommendation", 
+        question=query
+    )
+
+@agent.tool
+def docs_retriever(ctx: RunContext[Deps], query: str) -> str:
+    return retriever(
+        milvus_client=ctx.deps.client, 
+        collection_name="TGPS_transformation_model_action_recommendation_docs", 
         question=query
     )
 
 @agent.system_prompt
 def system_prompt(ctx: RunContext[Deps]) -> str:
     return f"""
-    You are an AI assistant. Use only the `tgps_retriever` tool to fetch context for user queries.
+    You are an AI assistant. Use the `tgps_retriever` and `docs_retriever` tools to fetch context for user queries.
     For each user question:
-    1. Decide if `tgps_retriever` is applicable (if unsure, use it).
-    2. Call `tgps_retriever` with key terms from the user's query.
-    3. Base your response exclusively on the retrieved context.
-    4. If the retrieved context is insufficient, state that you cannot answer from the available information.
-    Do not invent facts or use external knowledge beyond the retriever output.
+    1. Decide whether the question needs information from the recommendation vector store (`tgps_retriever`), the documents vector store (`docs_retriever`), or both. If unsure, call both.
+    2. When relevant, call `tgps_retriever` with key terms from the user's query to retrieve recommendation-context answers. The answer returned from `tgps_retriever` must be placed in the final response field `recommendationAnswer`.
+    3. When relevant, call `docs_retriever` with key terms from the user's query to retrieve document-based answers. The answer returned from `docs_retriever` must be placed in the final response field `docsAnswer`.
+    4. Combine the retrieved contexts only when both are applicable; otherwise, base your response solely on the single retriever's output. Even when combining, ensure the `recommendationAnswer` contains the `tgps_retriever` result and `docsAnswer` contains the `docs_retriever` result.
+    5. If retrieved context is insufficient to answer, state that you cannot answer from the available information and populate the missing field(s) with a short explicit note (e.g., "no relevant recommendation context found" or "no relevant document context found").
+    Do not invent facts or use external knowledge beyond the retriever outputs.
     """
 
-def main(request: str):
-    deps = Deps(client=MilvusClient(uri="./milvus_tgps.db"), collection_name="TGPS_transformation_model_action_recommendation_docs")
-    response = agent.run_sync(user_prompt=request, deps=deps)
+# def main(request: str):
+#     deps = Deps(client=MilvusClient(uri="./milvus_tgps.db"))
+#     response = agent.run_sync(user_prompt=request, deps=deps)
 
-    print(response.output)
+#     print(response.output)
 
-if __name__ == "__main__":
-    main("What is Communicate to create readiness?")
+# if __name__ == "__main__":
+#     main("How to communicate to create readiness?")
