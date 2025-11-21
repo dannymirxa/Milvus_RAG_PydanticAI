@@ -35,5 +35,5 @@ def retriever(milvus_client: MilvusClient, collection_name: str, question: str, 
     return context
 
 
-# question = "What is Communicate to create readiness?"
-# print(retriever(milvus_client=MilvusClient(uri="./milvus_tgps.db"), collection_name="TGPS_transformation_model_action_recommendation_docs", question=question, timestamp=datetime.now()))
+question = "What is Communicate to create readiness?"
+print(retriever(milvus_client=MilvusClient(uri="./milvus_tgps.db"), collection_name="TGPS_transformation_model_action_recommendation_docs", question=question, timestamp=datetime.now()))

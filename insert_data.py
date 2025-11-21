@@ -1,5 +1,8 @@
+import os, sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from modules.create_db_collection import build_db_collection
-from modules.build_vector_db import create_vectored_texts
+from modules.vectorize import create_vectored_texts
 from modules.embeddings_model import embed_text
 
 from pymilvus import MilvusClient
